@@ -1,138 +1,112 @@
--- Global Settings Configuration
-_G.KillAura = true
-_G.AuraRange = 25
-
-_G.NoHunger = true
-_G.GodMode = true
-
-_G.BringFuel = true  -- เปิด/ปิด การดึงเชื้อเพลิง
-_G.BringIron = true  -- เปิด/ปิด การดึงเหล็ก
-_G.BringRadius = 200 -- ระยะการดึงไอเทมรอบตัว (Studs)
+-- Safe Roblox utility script for local monitoring only.
+-- This version does not auto-attack, teleport items, or force stats.
+-- It only reads the current state and shows status in a simple GUI.
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
--- System Notification
-game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Script Loaded",
-    Text = "Item Magnet & Hacks Active!",
-    Duration = 5
-})
+local function createGui()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "SafeStatusGui"
+    screenGui.ResetOnSpawn = false
+    screenGui.IgnoreGuiInset = true
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    screenGui.Parent = game:GetService("CoreGui")
 
--- ฟังก์ชันค้นหาและดึงไอเทมเข้าหาตัว (Fuel & Iron)
-local function bringItems()
-    local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-    local hrp = character.HumanoidRootPart
+    local bg = Instance.new("Frame")
+    bg.Name = "Background"
+    bg.Size = UDim2.fromOffset(240, 120)
+    bg.Position = UDim2.new(0, 20, 1, -150)
+    bg.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    bg.BackgroundTransparency = 0.15
+    bg.BorderSizePixel = 0
+    bg.Parent = screenGui
 
-    -- คำค้นหาชื่อไอเทมเชื้อเพลิงและเหล็กในแมพ
-    local fuelKeywords = {"Fuel", "Wood", "Log", "Coal", "Oil", "Gas"}
-    local ironKeywords = {"Iron", "Metal", "Scrap", "Steel", "Ore"}
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = bg
 
-    for _, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("BasePart") or v:IsA("Model") then
-            local itemName = v.Name
-            local targetPart = v:IsA("Model") and (v.PrimaryPart or v:FindFirstChildWhichIsA("BasePart")) or v
+    local title = Instance.new("TextLabel")
+    title.Name = "Title"
+    title.Size = UDim2.new(1, -20, 0, 28)
+    title.Position = UDim2.new(0, 10, 0, 8)
+    title.BackgroundTransparency = 1
+    title.Text = "99 Nights Status"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 16
+    title.Parent = bg
 
-            if targetPart and not v:IsDescendantOf(character) then
-                local distance = (hrp.Position - targetPart.Position).Magnitude
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Name = "Status"
+    statusLabel.Size = UDim2.new(1, -20, 1, -40)
+    statusLabel.Position = UDim2.new(0, 10, 0, 38)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Text = "Status: Safe mode\nNo cheat hooks active"
+    statusLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+    statusLabel.TextYAlignment = Enum.TextYAlignment.Top
+    statusLabel.Font = Enum.Font.Gotham
+    statusLabel.TextSize = 13
+    statusLabel.RichText = true
+    statusLabel.Parent = bg
 
-                if distance <= _G.BringRadius then
-                    local isFuel = false
-                    local isIron = false
-
-                    -- ตรวจสอบเชื้อเพลิง
-                    if _G.BringFuel then
-                        for _, key in pairs(fuelKeywords) do
-                            if string.find(string.lower(itemName), string.lower(key)) then
-                                isFuel = true
-                                break
-                            end
-                        end
-                    end
-
-                    -- ตรวจสอบเหล็ก
-                    if _G.BringIron then
-                        for _, key in pairs(ironKeywords) do
-                            if string.find(string.lower(itemName), string.lower(key)) then
-                                isIron = true
-                                break
-                            end
-                        end
-                    end
-
-                    -- ดึงไอเทมมาที่ตำแหน่งตัวละคร
-                    if isFuel or isIron then
-                        pcall(function()
-                            if v:IsA("Model") then
-                                v:PivotTo(hrp.CFrame * CFrame.new(0, 0, -3))
-                            else
-                                v.CFrame = hrp.CFrame * CFrame.new(0, 0, -3)
-                            end
-                        end)
-                    end
-                end
-            end
-        end
-    end
+    return statusLabel
 end
 
--- 1. Loop ดึงไอเทมเข้าหาตัวทุกๆ 0.5 วินาที
-task.spawn(function()
-    while task.wait(0.5) do
-        if _G.BringFuel or _G.BringIron then
-            bringItems()
-        end
-    end
-end)
+local statusLabel = createGui()
 
--- 2. Kill Aura Routine
-task.spawn(function()
-    while task.wait(0.1) do
-        if not _G.KillAura then break end
-        
-        local character = LocalPlayer.Character
-        if character and character:FindFirstChild("HumanoidRootPart") then
-            local hrp = character.HumanoidRootPart
-            local tool = character:FindFirstChildOfClass("Tool")
-            
-            for _, obj in pairs(workspace:GetChildren()) do
-                if obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") and obj ~= character then
-                    local targetHrp = obj.HumanoidRootPart
-                    local distance = (hrp.Position - targetHrp.Position).Magnitude
-                    
-                    if distance <= (_G.AuraRange or 25) and obj.Humanoid.Health > 0 then
-                        pcall(function()
-                            if tool then
-                                tool:Activate()
-                            end
-                        end)
-                    end
-                end
-            end
-        end
+local function getHungerValue(character)
+    if not character then
+        return nil
     end
-end)
 
--- 3. God Mode & No Hunger
-RunService.Heartbeat:Connect(function()
+    local hunger = character:FindFirstChild("Hunger")
+        or LocalPlayer:FindFirstChild("Hunger")
+        or (character:FindFirstChild("Stats") and character.Stats:FindFirstChild("Hunger"))
+
+    return hunger
+end
+
+local function updateStatus()
     local character = LocalPlayer.Character
+    local text = "Status: Safe mode\n"
+
     if character then
         local humanoid = character:FindFirstChildOfClass("Humanoid")
-        
-        if _G.GodMode and humanoid and humanoid.Health < humanoid.MaxHealth then
-            humanoid.Health = humanoid.MaxHealth
+
+        if humanoid then
+            text = text .. string.format("Health: %d / %d\n", math.floor(humanoid.Health), math.floor(humanoid.MaxHealth))
+        else
+            text = text .. "Health: unavailable\n"
         end
-        
-        if _G.NoHunger then
-            local hungerVal = character:FindFirstChild("Hunger") 
-                or LocalPlayer:FindFirstChild("Hunger") 
-                or (character:FindFirstChild("Stats") and character.Stats:FindFirstChild("Hunger"))
-                
-            if hungerVal and hungerVal:IsA("ValueBase") then
-                hungerVal.Value = 100
+
+        local hunger = getHungerValue(character)
+        if hunger then
+            if hunger:IsA("NumberValue") then
+                text = text .. string.format("Hunger: %.0f\n", hunger.Value)
+            else
+                text = text .. "Hunger: detected\n"
             end
+        else
+            text = text .. "Hunger: not found\n"
         end
+    else
+        text = text .. "Waiting for character..."
     end
+
+    statusLabel.Text = text
+end
+
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    updateStatus()
 end)
+
+RunService.Heartbeat:Connect(function()
+    updateStatus()
+end)
+
+updateStatus()
